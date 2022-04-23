@@ -47,12 +47,14 @@ public struct AsyncURLSession {
         }
     }
 
-    public func download(for request: URLRequest, location: URL) async throws -> (AsyncThrowingStream<Int, Error>, URLResponse) {
+    public func download(for request: URLRequest, location: URL) async throws -> (AsyncThrowingStream<Int, Error>, URLResponse, Task<Void, Never>) {
         let (asyncBytes, urlResponse) = try await URLSession.shared.bytes(for: request)
         let length = Int(urlResponse.expectedContentLength)
 
+        var task: Task<Void, Never> = Task {}
+
         let stream = AsyncThrowingStream<Int, Error> { continuation in
-            Task {
+            task = Task {
                 var current = 0
                 var data = Data()
                 data.reserveCapacity(length / 100)
@@ -81,15 +83,17 @@ public struct AsyncURLSession {
             }
         }
 
-        return (stream, urlResponse)
+        return (stream, urlResponse, task)
     }
 
-    public func download(from url: URL, location: URL) async throws -> (AsyncThrowingStream<Int, Error>, URLResponse) {
+    public func download(from url: URL, location: URL) async throws -> (AsyncThrowingStream<Int, Error>, URLResponse, Task<Void, Never>) {
         let (asyncBytes, urlResponse) = try await URLSession.shared.bytes(from: url)
         let length = Int(urlResponse.expectedContentLength)
 
+        var task: Task<Void, Never> = Task {}
+
         let stream = AsyncThrowingStream<Int, Error> { continuation in
-            Task.detached {
+            task = Task.detached {
                 var current = 0
                 var data = Data()
                 data.reserveCapacity(length / 100)
@@ -105,6 +109,8 @@ public struct AsyncURLSession {
                             try data.append(fileURL: location)
                             data.removeAll()
                         }
+
+                        try Task.checkCancellation()
                     }
 
                     if !data.isEmpty {
@@ -118,7 +124,7 @@ public struct AsyncURLSession {
             }
         }
 
-        return (stream, urlResponse)
+        return (stream, urlResponse, task)
     }
 
     fileprivate struct AsyncURLSessionError: Error {
