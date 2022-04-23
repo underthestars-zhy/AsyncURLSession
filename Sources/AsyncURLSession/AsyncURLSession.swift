@@ -121,6 +121,7 @@ public struct AsyncURLSession {
 
                     continuation.finish(throwing: nil)
                 } catch {
+                    try? FileManager.default.removeItem(at: location)
                     continuation.finish(throwing: error)
                 }
             }
