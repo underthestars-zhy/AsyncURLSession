@@ -70,6 +70,8 @@ public struct AsyncURLSession {
                             try data.append(fileURL: location)
                             data.removeAll()
                         }
+
+                        try Task.checkCancellation()
                     }
 
                     if !data.isEmpty {
@@ -93,7 +95,7 @@ public struct AsyncURLSession {
         var task: Task<Void, Never> = Task {}
 
         let stream = AsyncThrowingStream<Int, Error> { continuation in
-            task = Task.detached {
+            task = Task {
                 var current = 0
                 var data = Data()
                 data.reserveCapacity(length / 100)
